@@ -350,9 +350,9 @@ install_python() { # vm url md5 xp/win7
     start_vm "${1}"
     wait_for_guestcontrol "${1}"
 
-    log "Installing Python2.7"
-    guest_control_exec "${1}" "cmd.exe" "/c" "msiexec" "/passive" "/norestart" "/i" "${dl}:\\${src}"
-    guest_control_exec "${1}" "cmd.exe" "/c" "shutdown" "/s" "/f" "/t" "0"
+    log "Installing Python and Shutting down"
+    guest_control_exec "${1}" "msiexec.exe" "/i" "${dl}:\\${src}" "/qn" "/norestart" "ALLUSERS=1"
+    guest_control_exec "${1}" "shutdown.exe" "/s" "/f" "/t" "0"
 
     wait_for_shutdown "${1}"
 }
