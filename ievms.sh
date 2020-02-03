@@ -339,6 +339,47 @@ install_ie_win7() { # vm url md5
     wait_for_shutdown "${1}"
 }
 
+install_python() { # vm url md5 xp/win7
+    local src=`basename "${2}"`
+    local dl="Z"
+    if [ "${4}" = "Win10" ]; then
+        dl="D"
+    fi
+
+    download "${src}" "${2}" "${src}" "${3}"
+    start_vm "${1}"
+    wait_for_guestcontrol "${1}"
+
+    log "Installing Python2.7"
+    guest_control_exec "${1}" "cmd.exe" "/c" "msiexec" "/passive" "/norestart" "/i" "${dl}:\\${src}"
+    guest_control_exec "${1}" "cmd.exe" "/c" "shutdown" "/s" "/f" "/t" "0"
+
+    wait_for_shutdown "${1}"
+}
+
+install_cuckoo_agent() { # vm path md5 xp/win7
+    local src=`basename "${2}"`
+    local dest="C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\${src}w"
+    if [ "${4}" = "WinXP" ]; then
+        dest="C:\\Documents and Settings\\All Users\\Start Menu\\Programs\\Startup\\${src}w"
+    fi
+
+    start_vm "${1}"
+    wait_for_guestcontrol "${1}"
+    log "Installing Cuckoo Agent"
+    cp "${2}" "${ievms_home}"
+    copy_to_vm "${1}" "${src}" "${dest}" "${4}"
+    if [ "${4}" = "WinXP" ]; then
+        guest_control_exec "${1}" "cmd.exe" "/c" "shutdown" "/s" "/f" "/t" "0"
+    else
+        guest_control_exec "${1}" "cmd.exe" "/c" \
+            "echo shutdown.exe /s /f /t 0 >%USERPROFILE%\\ievms.bat"
+        guest_control_exec "${1}" "schtasks.exe" /run /tn ievms
+    fi
+
+    wait_for_shutdown "${1}"
+}
+
 # Build an ievms virtual machine given the IE version desired.
 build_ievm() {
     unset archive
@@ -426,6 +467,12 @@ build_ievm() {
 
         log "Building ${vm} VM"
         declare -F "build_ievm_ie${1}" && "build_ievm_ie${1}"
+
+        log "Installing Python2.7 onto ${vm} VM"
+        install_python "${vm}" "https://www.python.org/ftp/python/2.7.17/python-2.7.17.msi" \
+                       "4cc27e99ad41cd3e0f2a50d9b6a34f79" "${os}"
+        log "Installing Cuckoo Agent onto ${vm} VM"
+        install_cuckoo_agent "${vm}" "${HOME}/.cuckoo/agent/agent.py" `md5sum "${HOME}/.cuckoo/agent/agent.py" | cut -d" " -f 1` "${os}"
 
         log "Tagging VM with ievms version"
         VBoxManage setextradata "${vm}" "ievms" "{\"version\":\"${ievms_version}\"}"
