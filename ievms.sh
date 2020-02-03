@@ -469,8 +469,13 @@ build_ievm() {
         declare -F "build_ievm_ie${1}" && "build_ievm_ie${1}"
 
         log "Installing Python2.7 onto ${vm} VM"
-        install_python "${vm}" "https://www.python.org/ftp/python/2.7.17/python-2.7.17.msi" \
-                       "4cc27e99ad41cd3e0f2a50d9b6a34f79" "${os}"
+        if [ "${os}" = "WinXP" ]; then
+            install_python "${vm}" "https://www.python.org/ftp/python/2.7.10/python-2.7.10.msi" \
+                           "4ba2c79b103f6003bc4611c837a08208" "${os}"
+        else
+            install_python "${vm}" "https://www.python.org/ftp/python/2.7.17/python-2.7.17.msi" \
+                           "4cc27e99ad41cd3e0f2a50d9b6a34f79" "${os}"
+        fi
         log "Installing Cuckoo Agent onto ${vm} VM"
         install_cuckoo_agent "${vm}" "${HOME}/.cuckoo/agent/agent.py" `md5sum "${HOME}/.cuckoo/agent/agent.py" | cut -d" " -f 1` "${os}"
 
