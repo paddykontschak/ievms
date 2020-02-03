@@ -370,8 +370,18 @@ install_cuckoo_agent() { # vm path md5 xp/win7
     cp "${2}" "${ievms_home}"
     copy_to_vm "${1}" "${src}" "${dest}" "${4}"
     if [ "${4}" = "WinXP" ]; then
+        log "Forcing Python27 to be allowed by the firewall"
+        guest_control_exec "${1}" "cmd.exe" "/c" "netsh" "firewall" "set" "allowedprogram" "program"   \
+            "=" "C:\\Python27\\pythonw.exe" "name" "=" "PythonW" "mode" "=" "ENABLE" "scope" "=" "ALL" \
+            "profile" "=" "ALL"
+        log "Shutting down"
         guest_control_exec "${1}" "cmd.exe" "/c" "shutdown" "/s" "/f" "/t" "0"
     else
+        log "Forcing Python27 to be allowed by the firewall"
+        guest_control_exec "${1}" "cmd.exe" "/c" "netsh" "firewall" "set" "allowedprogram" "program"   \
+            "=" "C:\\Python27\\pythonw.exe" "name" "=" "PythonW" "mode" "=" "ENABLE" "scope" "=" "ALL" \
+            "profile" "=" "ALL"
+        log "Shutting down"
         guest_control_exec "${1}" "cmd.exe" "/c" \
             "echo shutdown.exe /s /f /t 0 >%USERPROFILE%\\ievms.bat"
         guest_control_exec "${1}" "schtasks.exe" /run /tn ievms
