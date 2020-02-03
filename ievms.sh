@@ -373,9 +373,9 @@ install_python() { # vm url md5 xp/win7
     start_vm "${1}"
     wait_for_guestcontrol "${1}"
 
-    log "Installing Python2.7"
-    guest_control_exec "${1}" "cmd.exe" "/c" "msiexec" "/passive" "/norestart" "/i" "${dl}:\\${src}"
-    guest_control_exec "${1}" "cmd.exe" "/c" "shutdown" "/s" "/f" "/t" "0"
+    log "Installing Python and Shutting down"
+    guest_control_exec "${1}" "msiexec.exe" "/i" "${dl}:\\${src}" "/qn" "/norestart" "ALLUSERS=1"
+    guest_control_exec "${1}" "shutdown.exe" "/s" "/f" "/t" "0"
 
     wait_for_shutdown "${1}"
 }
@@ -393,8 +393,18 @@ install_cuckoo_agent() { # vm path md5 xp/win7
     cp "${2}" "${ievms_home}"
     copy_to_vm "${1}" "${src}" "${dest}" "${4}"
     if [ "${4}" = "WinXP" ]; then
+        log "Forcing Python27 to be allowed by the firewall"
+        guest_control_exec "${1}" "cmd.exe" "/c" "netsh" "firewall" "set" "allowedprogram" "program"   \
+            "=" "C:\\Python27\\pythonw.exe" "name" "=" "PythonW" "mode" "=" "ENABLE" "scope" "=" "ALL" \
+            "profile" "=" "ALL"
+        log "Shutting down"
         guest_control_exec "${1}" "cmd.exe" "/c" "shutdown" "/s" "/f" "/t" "0"
     else
+        log "Forcing Python27 to be allowed by the firewall"
+        guest_control_exec "${1}" "cmd.exe" "/c" "netsh" "firewall" "set" "allowedprogram" "program"   \
+            "=" "C:\\Python27\\pythonw.exe" "name" "=" "PythonW" "mode" "=" "ENABLE" "scope" "=" "ALL" \
+            "profile" "=" "ALL"
+        log "Shutting down"
         guest_control_exec "${1}" "cmd.exe" "/c" \
             "echo shutdown.exe /s /f /t 0 >%USERPROFILE%\\ievms.bat"
         guest_control_exec "${1}" "schtasks.exe" /run /tn ievms
@@ -492,8 +502,13 @@ build_ievm() {
         declare -F "build_ievm_ie${1}" && "build_ievm_ie${1}"
 
         log "Installing Python2.7 onto ${vm} VM"
-        install_python "${vm}" "https://www.python.org/ftp/python/2.7.17/python-2.7.17.msi" \
-                       "4cc27e99ad41cd3e0f2a50d9b6a34f79" "${os}"
+        if [ "${os}" = "WinXP" ]; then
+            install_python "${vm}" "https://www.python.org/ftp/python/2.7.10/python-2.7.10.msi" \
+                           "4ba2c79b103f6003bc4611c837a08208" "${os}"
+        else
+            install_python "${vm}" "https://www.python.org/ftp/python/2.7.17/python-2.7.17.msi" \
+                           "4cc27e99ad41cd3e0f2a50d9b6a34f79" "${os}"
+        fi
         log "Installing Cuckoo Agent onto ${vm} VM"
         install_cuckoo_agent "${vm}" "${HOME}/.cuckoo/agent/agent.py" `md5sum "${HOME}/.cuckoo/agent/agent.py" | cut -d" " -f 1` "${os}"
 
