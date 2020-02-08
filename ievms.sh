@@ -413,6 +413,48 @@ install_cuckoo_agent() { # vm path md5 xp/win7
     wait_for_shutdown "${1}"
 }
 
+install_latest_ga() { # vm xp/win7
+    local dl="E"
+    if [ "${2}" != "Win10" ]; then
+        dl="D"
+    fi
+    attach "${1}" "additions" "Guest Additions"
+    start_vm "${1}"
+    wait_for_guestcontrol "${1}"
+    if [ "${2}" = "Win10" ]; then
+        log "Registering VBox Certificates"
+        guest_control_exec "${1}" "${dl}:\\cert\\VBoxCertUtil.exe" "add-trusted-publisher" \
+                           "${dl}:\\cert\\vbox*.cer" "--root" "${dl}:\\cert\\vbox*.cer"
+    fi
+    log "Installing Newest Guest Additions"
+    #guest_control_exec "${1}" "cmd.exe" "/c" "${dl}:\\VBoxWindowsAdditions.exe" "/S"
+    #guest_control_exec "${1}" "cmd.exe" /c \
+    #    "echo TIMEOUT 15 >C:\\Users\\${guest_user}\\ievms.bat"
+    guest_control_exec "${1}" "cmd.exe" /c \
+        "echo ${dl}:\\VBoxWindowsAdditions.exe >C:\\Users\\${guest_user}\\ievms.bat"
+    #guest_control_exec "${1}" "cmd.exe" /c \
+    #    "echo shutdown.exe /s /f /t 0 >>C:\\Users\\${guest_user}\\ievms.bat"
+
+    guest_control_exec "${1}" "schtasks.exe" /run /tn ievms
+
+    echo "Sleeping for 30sec..."
+    sleep 300
+    wait_for_guestcontrol "${1}"
+
+    VBoxManage controlvm "${1}" poweroff
+
+    echo "Shutting down..."
+    wait_for_shutdown "${1}"
+    eject "${1}" "Guest Additions"
+
+    start_vm "${1}"
+    wait_for_guestcontrol "${1}"
+    guest_control_exec "${1}" "cmd.exe" "/c" \
+        "echo shutdown.exe /s /f /t 0 >C:\\Users\\${guest_user}\\ievms.bat"
+    guest_control_exec "${1}" "schtasks.exe" /run /tn ievms
+    wait_for_shutdown "${1}"
+}
+
 # Build an ievms virtual machine given the IE version desired.
 build_ievm() {
     unset archive
@@ -546,6 +588,7 @@ build_ievm_ie8() {
     then
         boot_auto_ga "IE8 - Win7"
         disable_uac_win7 "IE8 - Win7"
+        install_latest_ga "IE8 - Win7" "Win7"
     else
         boot_auto_ga "IE8 - WinXP"
         set_xp_password "IE8 - WinXP"
@@ -557,6 +600,7 @@ build_ievm_ie8() {
 build_ievm_ie9() {
     boot_auto_ga "IE9 - Win7"
     disable_uac_win7 "IE9 - Win7"
+    install_latest_ga "IE9 - Win7" "Win7"
 }
 
 # Build the IE10 virtual machine, reusing the Win7 VM if requested (the default).
@@ -565,10 +609,12 @@ build_ievm_ie10() {
     then
         boot_auto_ga "IE10 - Win8"
         disable_uac_win7 "IE10 - Win8"
+        install_latest_ga "IE10 - Win8" "Win8"
     else
         boot_auto_ga "IE10 - Win7"
         disable_uac_win7 "IE10 - Win7"
         install_ie_win7 "IE10 - Win7" "https://raw.githubusercontent.com/kbandla/installers/master/MSIE/IE10-Windows6.1-x86-en-us.exe" "0f14b2de0b3cef611b9c1424049e996b"
+        install_latest_ga "IE10 - Win7" "Win7"
     fi
 }
 
@@ -577,11 +623,13 @@ build_ievm_ie11() {
     boot_auto_ga "IE11 - Win7"
     disable_uac_win7 "IE11 - Win7"
     install_ie_win7 "IE11 - Win7" "http://download.microsoft.com/download/9/2/F/92FC119C-3BCD-476C-B425-038A39625558/IE11-Windows6.1-x86-en-us.exe" "7d3479b9007f3c0670940c1b10a3615f"
+    install_latest_ga "IE11 - Win7" "Win7"
 }
 
 build_ievm_ieEDGE() {
     boot_auto_ga "MSEdge - Win10"
     disable_uac_win7 "MSEdge - Win10"
+    install_latest_ga "MSEdge - Win10" "Win10"
 }
 
 # ## Main Entry Point
